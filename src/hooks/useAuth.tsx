@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
+  checkSession: () => Promise<void>;  // ← qo'shing
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -76,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, refreshProfile, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, refreshProfile, logout, checkSession }}>
       {children}
     </AuthContext.Provider>
   );
