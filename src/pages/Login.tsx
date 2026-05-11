@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { account } from '../lib/appwrite';
 import { Keyboard, LogIn, Mail, Lock, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useAuth } from '../hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
    const navigate = useNavigate();
+   const { refreshProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
