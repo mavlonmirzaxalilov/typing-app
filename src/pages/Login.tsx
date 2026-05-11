@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
    const navigate = useNavigate();
-   const { refreshProfile } = useAuth();
+   const { refreshProfile, checkSession  } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,7 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       await account.createEmailPasswordSession(email, password);
-     await refreshProfile();          // session yangilash
+  await checkSession();        // session yangilash
       navigate('/');    
     } catch (error: any) {
       alert('Tizimga kirishda xatolik yuz berdi: ' + (error.message || 'Xatolik'));
