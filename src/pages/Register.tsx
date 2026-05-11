@@ -7,7 +7,7 @@ import { User, MapPin, Calendar, Lock, Mail, Loader2, ArrowLeft } from 'lucide-r
 import { Link, useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
-  const { refreshProfile } = useAuth();
+  const { checkSession } = useAuth();
   const navigate = useNavigate();
   const [role, setRole] = useState<UserRole>('user');
   const [formData, setFormData] = useState({
@@ -63,8 +63,7 @@ const Register: React.FC = () => {
         userId,
         profileData
       );
-
-      await refreshProfile();
+await checkSession();
       navigate('/');
     } catch (error: any) {
       console.error('Error during registration:', error);
