@@ -53,6 +53,7 @@ useEffect(() => {
 
     setSubmitting(true);
     try {
+     try { await account.deleteSession('current'); } catch (_) {}
       const userId = ID.unique();
       const fakeEmail = phoneToEmail(formData.phone);
 
