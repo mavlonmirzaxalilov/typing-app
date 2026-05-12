@@ -120,13 +120,6 @@ useEffect(() => {
           >
             O'quvchi
           </button>
-          <button
-            type="button"
-            onClick={() => setRole('admin')}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all ${role === 'admin' ? 'bg-cyan-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Admin
-          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
