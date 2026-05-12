@@ -1,24 +1,35 @@
 import React, { useState } from 'react';
 import { account } from '../lib/appwrite';
-import { Keyboard, LogIn, Mail, Lock, Loader2 } from 'lucide-react';
+import { Keyboard, LogIn, Phone, Lock, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
-   const navigate = useNavigate();
-   const { refreshProfile, checkSession  } = useAuth();
-  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const { checkSession } = useAuth();
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const phoneToEmail = (p: string) => {
+    const digits = p.replace(/\D/g, '');
+    return `${digits}@valiteach.uz`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^\d+\s()-]/g, '');
+    setPhone(value);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await account.createEmailPasswordSession(email, password);
-  await checkSession();        // session yangilash
-      navigate('/');    
+      const fakeEmail = phoneToEmail(phone);
+      await account.createEmailPasswordSession(fakeEmail, password);
+      await checkSession();
+      navigate('/');
     } catch (error: any) {
       alert('Tizimga kirishda xatolik yuz berdi: ' + (error.message || 'Xatolik'));
     } finally {
@@ -43,16 +54,16 @@ const Login: React.FC = () => {
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 ml-1">
-              <Mail className="w-3.5 h-3.5 text-cyan-500/50" /> Email
+              <Phone className="w-3.5 h-3.5 text-cyan-500/50" /> Telefon raqam
             </label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
               <input
-                type="email"
+                type="tel"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@mail.uz"
+                value={phone}
+                onChange={handlePhoneChange}
+                placeholder="+998 90 123 45 67"
                 className="w-full pl-12 pr-4 py-4 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500 transition-all text-sm"
               />
             </div>
