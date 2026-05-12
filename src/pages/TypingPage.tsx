@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { databases, APPWRITE_CONFIG, ID } from '../lib/appwrite';
 import { TypingText } from '../types';
 import { useAuth } from '../hooks/useAuth';
-import { ChevronLeft, RefreshCw, Trophy, Zap, Target, Timer, Loader2 } from 'lucide-react';
+import { ChevronLeft, RefreshCw, Trophy, Zap, Target, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const TypingPage: React.FC = () => {
@@ -21,6 +21,7 @@ const TypingPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const hasSubmittedRef = useRef(false); // ← duplicate yuborishdan himoya
 
   useEffect(() => {
     const fetchText = async () => {
@@ -58,6 +59,10 @@ const TypingPage: React.FC = () => {
   };
 
   const finishTest = useCallback(async (finalInput: string) => {
+    // Duplicate yuborishdan himoya — bir marta bajariladi
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
+
     if (!startTime || !text || !profile || !user || !APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.results) return;
     
     const now = Date.now();
@@ -108,6 +113,7 @@ const TypingPage: React.FC = () => {
     setEndTime(null);
     setIsFinished(false);
     setResults(null);
+    hasSubmittedRef.current = false; // ← reset qilish
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
@@ -197,7 +203,6 @@ const TypingPage: React.FC = () => {
                 />
               </div>
 
-              {/* Real-time stats footer */}
               <footer className="h-28 bg-[#0F0F12] border border-zinc-800 rounded-3xl flex items-center px-12 gap-16 mb-8 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 h-1 bg-cyan-600 shadow-[0_0_10px_rgba(6,182,212,0.5)] transition-all duration-300" style={{ width: `${Math.round((userInput.length / text.content.length) * 100)}%` }}></div>
                 
