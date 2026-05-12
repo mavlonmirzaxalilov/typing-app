@@ -20,8 +20,8 @@ const Register: React.FC = () => {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const branches = ['Toshkent', 'Samarqand', 'Buxoro', 'Namangan', 'Andijon', 'Farg\'ona', 'Qarshi', 'Nukus', 'Xiva'];
-  const ageCategories = ['7-10 yosh', '11-14 yosh', '15-18 yosh', '19+ yosh'];
+  const branches = ["Qo'qon","Dan'gara","Uchko'prik"];
+  const ageCategories = ['7-14 yosh', '14-17 yosh',];
 
   // Telefon raqamdan fake email yaratish
   const phoneToEmail = (phone: string) => {
