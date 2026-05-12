@@ -29,6 +29,7 @@ useEffect(() => {
     e.preventDefault();
     setLoading(true);
     try {
+       try { await account.deleteSession('current'); } catch (_) {} 
       const fakeEmail = phoneToEmail(phone);
       await account.createEmailPasswordSession(fakeEmail, password);
       await checkSession();
