@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { account, databases, APPWRITE_CONFIG, ID } from '../lib/appwrite';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types';
@@ -7,7 +7,7 @@ import { User, MapPin, Calendar, Lock, Phone, Loader2, ArrowLeft } from 'lucide-
 import { Link, useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
-  const { checkSession } = useAuth();
+  const { checkSession, user } = useAuth();
   const navigate = useNavigate();
   const [role, setRole] = useState<UserRole>('user');
   const [formData, setFormData] = useState({
@@ -28,6 +28,9 @@ const Register: React.FC = () => {
     const digits = phone.replace(/\D/g, '');
     return `${digits}@valiteach.uz`;
   };
+useEffect(() => {
+  if (user) navigate('/');
+}, [user]);
 
   // Telefon raqam formatlash — faqat raqam kiritishga ruxsat
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
