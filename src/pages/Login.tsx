@@ -3,10 +3,10 @@ import { account } from '../lib/appwrite';
 import { Keyboard, LogIn, Phone, Lock, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
-const { user } = useAuth();
 import { Link, useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
+const { user } = useAuth();
   const navigate = useNavigate();
   const { checkSession } = useAuth();
   const [phone, setPhone] = useState('');
