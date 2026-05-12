@@ -3,7 +3,7 @@ import { account, databases, APPWRITE_CONFIG, ID } from '../lib/appwrite';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types';
 import { motion } from 'motion/react';
-import { User, MapPin, Calendar, Lock, Mail, Loader2, ArrowLeft } from 'lucide-react';
+import { User, MapPin, Calendar, Lock, Phone, Loader2, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
@@ -13,7 +13,7 @@ const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
-    email: '',
+    phone: '',
     password: '',
     branch: '',
     ageCategory: '',
@@ -23,35 +23,54 @@ const Register: React.FC = () => {
   const branches = ['Toshkent', 'Samarqand', 'Buxoro', 'Namangan', 'Andijon', 'Farg\'ona', 'Qarshi', 'Nukus', 'Xiva'];
   const ageCategories = ['7-10 yosh', '11-14 yosh', '15-18 yosh', '19+ yosh'];
 
+  // Telefon raqamdan fake email yaratish
+  const phoneToEmail = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    return `${digits}@valiteach.uz`;
+  };
+
+  // Telefon raqam formatlash — faqat raqam kiritishga ruxsat
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^\d+\s()-]/g, '');
+    setFormData({ ...formData, phone: value });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.users) {
       alert('Tizim sozlanmagan (Appwrite config missing)');
       return;
     }
-    
+
+    const digits = formData.phone.replace(/\D/g, '');
+    if (digits.length < 9) {
+      alert('Telefon raqam noto\'g\'ri kiritildi');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // 1. Create Appwrite Account
-      // Using email/password as requested (email is needed for Appwrite standard account)
       const userId = ID.unique();
+      const fakeEmail = phoneToEmail(formData.phone);
+
+      // 1. Appwrite account yaratish
       await account.create(
         userId,
-        formData.email,
+        fakeEmail,
         formData.password,
         `${formData.name} ${formData.surname}`
       );
 
-      // 2. Create Session (Login)
-      await account.createEmailPasswordSession(formData.email, formData.password);
+      // 2. Session ochish
+      await account.createEmailPasswordSession(fakeEmail, formData.password);
 
-      // 3. Create Profile Document in Database
+      // 3. Profil yaratish
       const profileData = {
         uid: userId,
         name: formData.name,
         surname: formData.surname,
         role: role,
-        email: formData.email,
+        email: formData.phone, // email field da telefon raqam saqlanadi
         createdAt: Date.now(),
         branch: role === 'user' ? formData.branch : '',
         ageCategory: role === 'user' ? formData.ageCategory : ''
@@ -63,7 +82,8 @@ const Register: React.FC = () => {
         userId,
         profileData
       );
-await checkSession();
+
+      await checkSession();
       navigate('/');
     } catch (error: any) {
       console.error('Error during registration:', error);
@@ -137,31 +157,37 @@ await checkSession();
 
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 ml-1">
-              <Mail className="w-3.5 h-3.5 text-cyan-500/50" /> Email
+              <Phone className="w-3.5 h-3.5 text-cyan-500/50" /> Telefon raqam
             </label>
-            <input
-              required
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full p-4 bg-zinc-950 border border-zinc-800 rounded-xl focus:border-cyan-500 outline-none transition-all text-white placeholder-zinc-700 text-sm"
-              placeholder="example@mail.uz"
-            />
+            <div className="relative">
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+              <input
+                required
+                type="tel"
+                value={formData.phone}
+                onChange={handlePhoneChange}
+                className="w-full pl-12 pr-4 p-4 bg-zinc-950 border border-zinc-800 rounded-xl focus:border-cyan-500 outline-none transition-all text-white placeholder-zinc-700 text-sm"
+                placeholder="+998 90 123 45 67"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2 ml-1">
               <Lock className="w-3.5 h-3.5 text-cyan-500/50" /> Parol
             </label>
-            <input
-              required
-              type="password"
-              minLength={8}
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full p-4 bg-zinc-950 border border-zinc-800 rounded-xl focus:border-cyan-500 outline-none transition-all text-white placeholder-zinc-700 text-sm"
-              placeholder="Kamida 8 ta belgi"
-            />
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+              <input
+                required
+                type="password"
+                minLength={8}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full pl-12 pr-4 p-4 bg-zinc-950 border border-zinc-800 rounded-xl focus:border-cyan-500 outline-none transition-all text-white placeholder-zinc-700 text-sm"
+                placeholder="Kamida 8 ta belgi"
+              />
+            </div>
           </div>
 
           {role === 'user' && (
