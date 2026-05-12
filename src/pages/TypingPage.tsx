@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { databases, APPWRITE_CONFIG, ID } from '../lib/appwrite';
+import { Query } from 'appwrite';
 import { TypingText } from '../types';
 import { useAuth } from '../hooks/useAuth';
-import { ChevronLeft, RefreshCw, Trophy, Zap, Target, Loader2 } from 'lucide-react';
+import { ChevronLeft, RefreshCw, Trophy, Zap, Target, Loader2, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const TypingPage: React.FC = () => {
@@ -19,28 +20,48 @@ const TypingPage: React.FC = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [alreadyCompleted, setAlreadyCompleted] = useState(false); // ← allaqachon yozganmi
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const hasSubmittedRef = useRef(false);
 
   useEffect(() => {
-    const fetchText = async () => {
+    const fetchData = async () => {
       if (!textId || !APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.texts) return;
       try {
+        // 1. Matnni yuklash
         const response = await databases.getDocument(
           APPWRITE_CONFIG.databaseId,
           APPWRITE_CONFIG.collections.texts,
           textId
         );
         setText({ id: response.$id, ...response } as unknown as TypingText);
+
+        // 2. Bu user bu textni yozganmi tekshirish
+        if (user && APPWRITE_CONFIG.collections.results) {
+          const existing = await databases.listDocuments(
+            APPWRITE_CONFIG.databaseId,
+            APPWRITE_CONFIG.collections.results,
+            [
+              Query.equal('userId', user.$id),
+              Query.equal('textId', textId),
+            ]
+          );
+          if (existing.total > 0) {
+            const prev = existing.documents[0];
+            setResults({ wpm: prev.wpm, accuracy: prev.accuracy });
+            setAlreadyCompleted(true);
+            setIsFinished(true);
+          }
+        }
       } catch (error) {
         console.error('Error fetching text:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchText();
-  }, [textId]);
+    fetchData();
+  }, [textId, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (isFinished) return;
@@ -72,16 +93,9 @@ const TypingPage: React.FC = () => {
     const timeInMinutes = timeInSeconds / 60;
     const charCount = finalInput.length;
 
-    // Xatolar soni
     const errors = finalInput.split('').filter((char, i) => char !== text.content[i]).length;
-
-    // Gross WPM — umumiy tezlik
     const grossWpm = (charCount / 5) / timeInMinutes;
-
-    // Net WPM — xatolar ayirilgan, 0 dan past bo'lmaydi
     const netWpm = Math.max(0, Math.round(grossWpm - (errors / timeInMinutes)));
-
-    // Accuracy
     const correctChars = charCount - errors;
     const accuracy = Math.round((correctChars / text.content.length) * 100);
     
@@ -248,11 +262,23 @@ const TypingPage: React.FC = () => {
                 <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-600" />
                 
                 <div className="w-24 h-24 bg-cyan-600/10 border border-cyan-500/20 rounded-3xl flex items-center justify-center mx-auto mb-10 rotate-3 shadow-[0_0_40px_rgba(6,182,212,0.1)]">
-                  <Trophy className="w-12 h-12 text-cyan-500 -rotate-3" />
+                  {alreadyCompleted
+                    ? <Lock className="w-12 h-12 text-cyan-500 -rotate-3" />
+                    : <Trophy className="w-12 h-12 text-cyan-500 -rotate-3" />
+                  }
                 </div>
                 
-                <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Challenge Completed!</h2>
-                <p className="text-zinc-500 mb-12 font-medium tracking-tight uppercase text-xs tracking-[0.2em]">Your stats have been synchronized</p>
+                {alreadyCompleted ? (
+                  <>
+                    <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Allaqachon yozgansiz!</h2>
+                    <p className="text-zinc-500 mb-12 font-medium tracking-tight uppercase text-xs tracking-[0.2em]">Bu matn faqat 1 marta yoziladi</p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Challenge Completed!</h2>
+                    <p className="text-zinc-500 mb-12 font-medium tracking-tight uppercase text-xs tracking-[0.2em]">Your stats have been synchronized</p>
+                  </>
+                )}
                 
                 <div className="grid grid-cols-2 gap-8 mb-12">
                   <div className="bg-zinc-950 p-10 rounded-[32px] border border-zinc-800 text-left relative overflow-hidden group">
@@ -273,22 +299,13 @@ const TypingPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-5">
-                  <button
-                    id="retry-btn"
-                    onClick={resetTest}
-                    className="flex-1 py-5 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-800 hover:border-zinc-700 transition-all active:scale-[0.98]"
-                  >
-                    <RefreshCw className="w-5 h-5 text-zinc-500" /> Urinishni qaytarish
-                  </button>
-                  <button
-                    id="finish-btn"
-                    onClick={() => navigate('/')}
-                    className="flex-1 py-5 bg-cyan-600 text-white rounded-2xl font-bold hover:bg-cyan-500 transition-all shadow-xl shadow-cyan-900/20 active:scale-[0.98]"
-                  >
-                    Bosh sahifaga
-                  </button>
-                </div>
+                <button
+                  id="finish-btn"
+                  onClick={() => navigate('/')}
+                  className="w-full py-5 bg-cyan-600 text-white rounded-2xl font-bold hover:bg-cyan-500 transition-all shadow-xl shadow-cyan-900/20 active:scale-[0.98]"
+                >
+                  Bosh sahifaga
+                </button>
 
                 {saving && (
                   <div className="mt-8 flex items-center justify-center gap-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
