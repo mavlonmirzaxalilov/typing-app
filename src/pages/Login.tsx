@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { account } from '../lib/appwrite';
 import { Keyboard, LogIn, Phone, Lock, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
+const { user } = useAuth();
 import { Link, useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
@@ -16,7 +17,9 @@ const Login: React.FC = () => {
     const digits = p.replace(/\D/g, '');
     return `${digits}@valiteach.uz`;
   };
-
+useEffect(() => {
+  if (user) navigate('/');
+}, [user]);
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^\d+\s()-]/g, '');
     setPhone(value);
