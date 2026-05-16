@@ -21,6 +21,8 @@ const TypingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alreadyCompleted, setAlreadyCompleted] = useState(false); // ← allaqachon yozganmi
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+const [timeExpired, setTimeExpired] = useState(false);
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const hasSubmittedRef = useRef(false);
@@ -63,6 +65,28 @@ const TypingPage: React.FC = () => {
     fetchData();
   }, [textId, user]);
 
+  useEffect(() => {
+  if (!startTime || !text?.duration || text.duration === 0) return;
+
+  const totalSeconds = text.duration * 60;
+  const interval = setInterval(() => {
+    const elapsed = (Date.now() - startTime) / 1000;
+    const remaining = totalSeconds - elapsed;
+
+    if (remaining <= 0) {
+      clearInterval(interval);
+      setTimeLeft(0);
+      setTimeExpired(true);
+      if (!isFinished) {
+        finishTest(userInput);
+      }
+    } else {
+      setTimeLeft(Math.ceil(remaining));
+    }
+  }, 500);
+
+  return () => clearInterval(interval);
+}, [startTime, text, isFinished]);
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (isFinished) return;
     
