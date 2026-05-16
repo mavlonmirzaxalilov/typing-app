@@ -129,15 +129,15 @@ const AdminDashboard: React.FC = () => {
       console.error('Error saving text:', error);
     }
   };
-  const openEditModal = (text: TypingText) => {
-    setNewText({ title: text.title, content: text.content });
+const openEditModal = (text: TypingText) => {
+    setNewText({ title: text.title, content: text.content, duration: text.duration ?? 0 }); // ← duration qo'shildi
     setEditingId(text.id);
     setShowModal(true);
   };
 
-  const closeAndResetModal = () => {
+ const closeAndResetModal = () => {
     setShowModal(false);
-    setNewText({ title: '', content: '' });
+    setNewText({ title: '', content: '', duration: 0 }); // ← duration: 0 qo'shildi
     setEditingId(null);
   };
 
