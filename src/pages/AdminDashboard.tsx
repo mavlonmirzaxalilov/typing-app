@@ -413,6 +413,20 @@ const openEditModal = (text: TypingText) => {
                       onChange={e => setNewText({ ...newText, content: e.target.value })}
                     />
                   </div>
+                  <div className="space-y-2">
+  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">
+    Vaqt chegarasi (daqiqa)
+  </label>
+  <input
+    type="number"
+    min={0}
+    className="w-full p-4 bg-zinc-950 border border-zinc-800 rounded-xl focus:border-cyan-500 outline-none text-white placeholder-zinc-700 transition-all font-medium"
+    placeholder="0 = vaqt cheklanmagan"
+    value={newText.duration}
+    onChange={e => setNewText({ ...newText, duration: Number(e.target.value) })}
+  />
+  <p className="text-xs text-zinc-600 ml-1">0 qo'ysangiz — vaqt cheklanmaydi</p>
+</div>
                   <div className="flex gap-4 pt-6">
                     <button
                       id="cancel-add-btn"
