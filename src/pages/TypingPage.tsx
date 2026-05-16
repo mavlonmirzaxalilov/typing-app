@@ -20,9 +20,9 @@ const TypingPage: React.FC = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [alreadyCompleted, setAlreadyCompleted] = useState(false); // ← allaqachon yozganmi
+  const [alreadyCompleted, setAlreadyCompleted] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-const [timeExpired, setTimeExpired] = useState(false);
+  const [timeExpired, setTimeExpired] = useState(false);
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const hasSubmittedRef = useRef(false);
@@ -31,7 +31,6 @@ const [timeExpired, setTimeExpired] = useState(false);
     const fetchData = async () => {
       if (!textId || !APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.texts) return;
       try {
-        // 1. Matnni yuklash
         const response = await databases.getDocument(
           APPWRITE_CONFIG.databaseId,
           APPWRITE_CONFIG.collections.texts,
@@ -39,7 +38,6 @@ const [timeExpired, setTimeExpired] = useState(false);
         );
         setText({ id: response.$id, ...response } as unknown as TypingText);
 
-        // 2. Bu user bu textni yozganmi tekshirish
         if (user && APPWRITE_CONFIG.collections.results) {
           const existing = await databases.listDocuments(
             APPWRITE_CONFIG.databaseId,
@@ -66,27 +64,28 @@ const [timeExpired, setTimeExpired] = useState(false);
   }, [textId, user]);
 
   useEffect(() => {
-  if (!startTime || !text?.duration || text.duration === 0) return;
+    if (!startTime || !text?.duration || text.duration === 0) return;
 
-  const totalSeconds = text.duration * 60;
-  const interval = setInterval(() => {
-    const elapsed = (Date.now() - startTime) / 1000;
-    const remaining = totalSeconds - elapsed;
+    const totalSeconds = text.duration * 60;
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const remaining = totalSeconds - elapsed;
 
-    if (remaining <= 0) {
-      clearInterval(interval);
-      setTimeLeft(0);
-      setTimeExpired(true);
-      if (!isFinished) {
-        finishTest(userInput);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setTimeLeft(0);
+        setTimeExpired(true);
+        if (!isFinished) {
+          finishTest(userInput);
+        }
+      } else {
+        setTimeLeft(Math.ceil(remaining));
       }
-    } else {
-      setTimeLeft(Math.ceil(remaining));
-    }
-  }, 500);
+    }, 500);
 
-  return () => clearInterval(interval);
-}, [startTime, text, isFinished]);
+    return () => clearInterval(interval);
+  }, [startTime, text, isFinished]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (isFinished) return;
     
@@ -156,6 +155,8 @@ const [timeExpired, setTimeExpired] = useState(false);
     setEndTime(null);
     setIsFinished(false);
     setResults(null);
+    setTimeLeft(null);
+    setTimeExpired(false);
     hasSubmittedRef.current = false;
     setTimeout(() => inputRef.current?.focus(), 0);
   };
@@ -222,10 +223,22 @@ const [timeExpired, setTimeExpired] = useState(false);
               key="typing"
               className="flex-1 flex flex-col"
             >
-              <div className="mb-12">
+              <div className="mb-6">
                 <h2 className="text-[10px] text-zinc-600 uppercase tracking-[0.4em] mb-2 font-black text-center">Active Challenge</h2>
                 <h1 className="text-3xl font-bold text-white text-center tracking-tight">{text.title}</h1>
               </div>
+
+              {/* Timer — sarlavha va matn orasida */}
+              {text.duration && text.duration > 0 && startTime && (
+                <div className="flex justify-center mb-6">
+                  <span className={`text-5xl font-mono font-bold tracking-tighter ${
+                    timeLeft !== null && timeLeft <= 10 ? 'text-red-400 animate-pulse' : 'text-cyan-400'
+                  }`}>
+                    {timeLeft !== null ? timeLeft : text.duration * 60}
+                    <span className="text-xl text-zinc-600 ml-2">s</span>
+                  </span>
+                </div>
+              )}
               
               <div 
                 className="flex-1 relative p-12 bg-zinc-900/40 rounded-[40px] border border-zinc-800 shadow-2xl font-mono text-3xl leading-relaxed text-justify mb-12 select-none overflow-y-auto"
@@ -296,6 +309,11 @@ const [timeExpired, setTimeExpired] = useState(false);
                   <>
                     <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Allaqachon yozgansiz!</h2>
                     <p className="text-zinc-500 mb-12 font-medium tracking-tight uppercase text-xs tracking-[0.2em]">Bu matn faqat 1 marta yoziladi</p>
+                  </>
+                ) : timeExpired ? (
+                  <>
+                    <h2 className="text-4xl font-black text-white mb-3 tracking-tight">Vaqt tugadi!</h2>
+                    <p className="text-amber-400 mb-12 font-medium tracking-tight uppercase text-xs tracking-[0.2em]">⏱ Natijangiz saqlandi</p>
                   </>
                 ) : (
                   <>
