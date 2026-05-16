@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { databases, client, APPWRITE_CONFIG, ID } from '../lib/appwrite';
 import { Query } from 'appwrite';
-import { TypingText, TypingResult } from '../types';
+import { TypingText, TypingResult, UserProfile } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { Plus, Trash2, Trophy, FileText, CheckCircle, Users, Activity, Loader2, Edit } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -11,10 +11,12 @@ const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const [texts, setTexts] = useState<TypingText[]>([]);
   const [results, setResults] = useState<TypingResult[]>([]);
-  const [activeTab, setActiveTab] = useState<'texts' | 'results'>('texts');
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [activeTab, setActiveTab] = useState<'texts' | 'results' | 'users'>('texts');
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
- const [newText, setNewText] = useState({ title: '', content: '', duration: 0 });
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [newText, setNewText] = useState({ title: '', content: '', duration: 0 });
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchTexts = async () => {
@@ -50,10 +52,26 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.users) return;
+    setUsersLoading(true);
+    try {
+      const response = await databases.listDocuments(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.collections.users,
+        [Query.orderDesc('createdAt')]
+      );
+      setUsers(response.documents.map(doc => ({ ...doc } as unknown as UserProfile)));
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchTexts();
 
-    // Subscribe to changes in texts collection
     const unsubscribe = client.subscribe(
       `databases.${APPWRITE_CONFIG.databaseId}.collections.${APPWRITE_CONFIG.collections.texts}.documents`,
       (response) => {
@@ -77,7 +95,6 @@ const AdminDashboard: React.FC = () => {
 
     fetchResults(activeText.id);
 
-    // Subscribe to results for matching textId
     const unsubscribe = client.subscribe(
       `databases.${APPWRITE_CONFIG.databaseId}.collections.${APPWRITE_CONFIG.collections.results}.documents`,
       (response) => {
@@ -91,7 +108,13 @@ const AdminDashboard: React.FC = () => {
     return () => unsubscribe();
   }, [texts]);
 
- const handleAddText = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers();
+    }
+  }, [activeTab]);
+
+  const handleAddText = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.texts) return;
     try {
@@ -103,7 +126,7 @@ const AdminDashboard: React.FC = () => {
           {
             title: newText.title,
             content: newText.content,
-            duration: newText.duration,   // ← QO'SHILDI
+            duration: newText.duration,
           }
         );
       } else {
@@ -117,11 +140,11 @@ const AdminDashboard: React.FC = () => {
             authorId: user.$id,
             createdAt: Date.now(),
             isActive: false,
-            duration: newText.duration,   // ← QO'SHILDI
+            duration: newText.duration,
           }
         );
       }
-      setNewText({ title: '', content: '', duration: 0 });   // ← duration: 0 QO'SHILDI
+      setNewText({ title: '', content: '', duration: 0 });
       setEditingId(null);
       setShowModal(false);
       fetchTexts();
@@ -129,22 +152,22 @@ const AdminDashboard: React.FC = () => {
       console.error('Error saving text:', error);
     }
   };
-const openEditModal = (text: TypingText) => {
-    setNewText({ title: text.title, content: text.content, duration: text.duration ?? 0 }); // ← duration qo'shildi
+
+  const openEditModal = (text: TypingText) => {
+    setNewText({ title: text.title, content: text.content, duration: text.duration ?? 0 });
     setEditingId(text.id);
     setShowModal(true);
   };
 
- const closeAndResetModal = () => {
+  const closeAndResetModal = () => {
     setShowModal(false);
-    setNewText({ title: '', content: '', duration: 0 }); // ← duration: 0 qo'shildi
+    setNewText({ title: '', content: '', duration: 0 });
     setEditingId(null);
   };
 
   const toggleActive = async (textId: string, currentStatus: boolean) => {
     if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.texts) return;
     try {
-      // First, deactivate all others if we are activating one
       if (!currentStatus) {
         const activeOne = texts.find(t => t.isActive);
         if (activeOne) {
@@ -169,17 +192,48 @@ const openEditModal = (text: TypingText) => {
   };
 
   const deleteText = async (id: string) => {
-    if (confirm('Ushbu matnni o\'chirmoqchimisiz?') && APPWRITE_CONFIG.databaseId && APPWRITE_CONFIG.collections.texts) {
-      try {
-        await databases.deleteDocument(
-          APPWRITE_CONFIG.databaseId,
-          APPWRITE_CONFIG.collections.texts,
-          id
-        );
-        fetchTexts();
-      } catch (error) {
-        console.error('Error deleting text:', error);
-      }
+    if (!confirm('Ushbu matnni o\'chirmoqchimisiz?')) return;
+    if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.texts) return;
+    try {
+      await databases.deleteDocument(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.collections.texts,
+        id
+      );
+      fetchTexts();
+    } catch (error) {
+      console.error('Error deleting text:', error);
+    }
+  };
+
+  const deleteResult = async (id: string) => {
+    if (!confirm('Ushbu natijani o\'chirmoqchimisiz?')) return;
+    if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.results) return;
+    try {
+      await databases.deleteDocument(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.collections.results,
+        id
+      );
+      const activeText = texts.find(t => t.isActive);
+      if (activeText) fetchResults(activeText.id);
+    } catch (error) {
+      console.error('Error deleting result:', error);
+    }
+  };
+
+  const deleteUser = async (uid: string) => {
+    if (!confirm('Ushbu foydalanuvchini o\'chirmoqchimisiz?')) return;
+    if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.users) return;
+    try {
+      await databases.deleteDocument(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.collections.users,
+        uid
+      );
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
     }
   };
 
@@ -209,17 +263,25 @@ const openEditModal = (text: TypingText) => {
             >
               <Activity className="w-4 h-4" /> Jonli Natijalar
             </button>
+            <button
+              id="tab-users"
+              onClick={() => setActiveTab('users')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <Users className="w-4 h-4" /> Foydalanuvchilar
+            </button>
           </div>
         </div>
 
-        {activeTab === 'texts' ? (
+        {/* TEXTS TAB */}
+        {activeTab === 'texts' && (
           <div className="space-y-8">
             <div className="flex justify-end">
               <button
                 id="open-add-modal-btn"
                 onClick={() => {
                   setEditingId(null);
-                  setNewText({ title: '', content: '' });
+                  setNewText({ title: '', content: '', duration: 0 });
                   setShowModal(true);
                 }}
                 className="flex items-center gap-2 bg-zinc-950 text-white px-8 py-3.5 rounded-xl font-bold border border-zinc-800 hover:border-cyan-500 transition-all shadow-xl group"
@@ -262,6 +324,7 @@ const openEditModal = (text: TypingText) => {
                         <button
                           onClick={() => deleteText(text.id)}
                           className="p-2.5 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="O'chirish"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -285,7 +348,10 @@ const openEditModal = (text: TypingText) => {
               </div>
             )}
           </div>
-        ) : (
+        )}
+
+        {/* RESULTS TAB */}
+        {activeTab === 'results' && (
           <div className="bg-[#0F0F12] rounded-2xl border border-zinc-800 overflow-hidden shadow-2xl">
             <div className="p-8 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/20">
               <div className="flex items-center gap-4">
@@ -315,6 +381,7 @@ const openEditModal = (text: TypingText) => {
                       <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-center">Category</th>
                       <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-right">WPM</th>
                       <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-right">Accuracy</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-center">Amal</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800/30">
@@ -350,6 +417,15 @@ const openEditModal = (text: TypingText) => {
                             {res.accuracy}%
                           </span>
                         </td>
+                        <td className="p-5 text-center">
+                          <button
+                            onClick={() => deleteResult(res.id)}
+                            className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                            title="O'chirish"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
                       </motion.tr>
                     ))}
                   </tbody>
@@ -369,7 +445,95 @@ const openEditModal = (text: TypingText) => {
           </div>
         )}
 
-        {/* Add Modal */}
+        {/* USERS TAB */}
+        {activeTab === 'users' && (
+          <div className="bg-[#0F0F12] rounded-2xl border border-zinc-800 overflow-hidden shadow-2xl">
+            <div className="p-8 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/20">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-cyan-600/10 rounded-xl flex items-center justify-center">
+                  <Users className="w-6 h-6 text-cyan-500" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">Foydalanuvchilar</h2>
+                  <p className="text-xs text-zinc-500 font-mono tracking-widest uppercase mt-0.5">Barcha ro'yxatdan o'tgan foydalanuvchilar</p>
+                </div>
+              </div>
+              <div className="px-4 py-2 bg-zinc-900 rounded-xl border border-zinc-800 text-xs text-zinc-400 font-medium">
+                <span className="text-cyan-500 font-bold">{users.length}</span> ta foydalanuvchi
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              {usersLoading ? (
+                <div className="flex justify-center py-24">
+                  <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
+                </div>
+              ) : users.length > 0 ? (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-zinc-950/40">
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Ism</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Email</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Filial</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-center">Yosh toifasi</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-center">Rol</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-center">Amal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/30">
+                    {users.map((u) => (
+                      <motion.tr
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        key={u.uid}
+                        className="hover:bg-zinc-800/20 transition-colors"
+                      >
+                        <td className="p-5">
+                          <div className="font-bold text-zinc-100">{u.name} {u.surname}</div>
+                          <div className="text-[10px] text-zinc-600 font-mono mt-0.5">{new Date(u.createdAt).toLocaleDateString()}</div>
+                        </td>
+                        <td className="p-5">
+                          <span className="text-sm text-zinc-400 font-medium">{u.email ?? '—'}</span>
+                        </td>
+                        <td className="p-5">
+                          <span className="text-sm text-zinc-400 font-medium">{u.branch ?? '—'}</span>
+                        </td>
+                        <td className="p-5 text-center">
+                          <span className="px-2 py-1 bg-zinc-900 border border-zinc-800 rounded-md text-[10px] font-bold text-zinc-400">
+                            {u.ageCategory ?? '—'}
+                          </span>
+                        </td>
+                        <td className="p-5 text-center">
+                          <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${u.role === 'admin' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="p-5 text-center">
+                          <button
+                            onClick={() => deleteUser(u.uid)}
+                            className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                            title="O'chirish"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-32 text-center flex flex-col items-center gap-6">
+                  <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center border border-zinc-800 shadow-inner">
+                    <Users className="w-8 h-8 text-zinc-700" />
+                  </div>
+                  <p className="text-zinc-300 font-bold text-lg">Foydalanuvchilar yo'q</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal */}
         <AnimatePresence>
           {showModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
@@ -414,19 +578,17 @@ const openEditModal = (text: TypingText) => {
                     />
                   </div>
                   <div className="space-y-2">
-  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">
-    Vaqt chegarasi (daqiqa)
-  </label>
-  <input
-    type="number"
-    min={0}
-    className="w-full p-4 bg-zinc-950 border border-zinc-800 rounded-xl focus:border-cyan-500 outline-none text-white placeholder-zinc-700 transition-all font-medium"
-    placeholder="0 = vaqt cheklanmagan"
-    value={newText.duration}
-    onChange={e => setNewText({ ...newText, duration: Number(e.target.value) })}
-  />
-  <p className="text-xs text-zinc-600 ml-1">0 qo'ysangiz — vaqt cheklanmaydi</p>
-</div>
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] ml-1">Vaqt chegarasi (daqiqa)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full p-4 bg-zinc-950 border border-zinc-800 rounded-xl focus:border-cyan-500 outline-none text-white placeholder-zinc-700 transition-all font-medium"
+                      placeholder="0 = vaqt cheklanmagan"
+                      value={newText.duration}
+                      onChange={e => setNewText({ ...newText, duration: Number(e.target.value) })}
+                    />
+                    <p className="text-xs text-zinc-600 ml-1">0 qo'ysangiz — vaqt cheklanmaydi</p>
+                  </div>
                   <div className="flex gap-4 pt-6">
                     <button
                       id="cancel-add-btn"
