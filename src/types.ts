@@ -18,6 +18,7 @@ export interface TypingText {
   authorId: string;
   createdAt: number;
   isActive: boolean;
+  duration?: number;
 }
 
 export interface TypingResult {
