@@ -14,7 +14,7 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'texts' | 'results'>('texts');
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [newText, setNewText] = useState({ title: '', content: '' });
+ const [newText, setNewText] = useState({ title: '', content: '', duration: 0 });
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchTexts = async () => {
@@ -91,7 +91,7 @@ const AdminDashboard: React.FC = () => {
     return () => unsubscribe();
   }, [texts]);
 
-  const handleAddText = async (e: React.FormEvent) => {
+ const handleAddText = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.texts) return;
     try {
@@ -103,6 +103,7 @@ const AdminDashboard: React.FC = () => {
           {
             title: newText.title,
             content: newText.content,
+            duration: newText.duration,   // ← QO'SHILDI
           }
         );
       } else {
@@ -115,11 +116,12 @@ const AdminDashboard: React.FC = () => {
             content: newText.content,
             authorId: user.$id,
             createdAt: Date.now(),
-            isActive: false
+            isActive: false,
+            duration: newText.duration,   // ← QO'SHILDI
           }
         );
       }
-      setNewText({ title: '', content: '' });
+      setNewText({ title: '', content: '', duration: 0 });   // ← duration: 0 QO'SHILDI
       setEditingId(null);
       setShowModal(false);
       fetchTexts();
@@ -127,7 +129,6 @@ const AdminDashboard: React.FC = () => {
       console.error('Error saving text:', error);
     }
   };
-
   const openEditModal = (text: TypingText) => {
     setNewText({ title: text.title, content: text.content });
     setEditingId(text.id);
