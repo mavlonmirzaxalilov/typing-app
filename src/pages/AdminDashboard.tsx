@@ -236,6 +236,22 @@ const AdminDashboard: React.FC = () => {
       console.error('Error deleting user:', error);
     }
   };
+  const updateUserRole = async (uid: string, currentRole: string) => {
+  if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.users) return;
+  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  if (!confirm(`Rolni "${newRole}" ga o'zgartirmoqchimisiz?`)) return;
+  try {
+    await databases.updateDocument(
+      APPWRITE_CONFIG.databaseId,
+      APPWRITE_CONFIG.collections.users,
+      uid,
+      { role: newRole }
+    );
+    fetchUsers();
+  } catch (error) {
+    console.error('Error updating role:', error);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#0A0A0B]">
@@ -409,23 +425,28 @@ const AdminDashboard: React.FC = () => {
                             {res.ageCategory}
                           </span>
                         </td>
-                        <td className="p-5 text-right">
-                          <span className="text-2xl font-mono font-bold text-white tracking-tighter">{res.wpm}</span>
-                        </td>
-                        <td className="p-5 text-right">
-                          <span className={`text-sm font-mono font-bold ${res.accuracy > 95 ? 'text-green-500' : 'text-zinc-400'}`}>
-                            {res.accuracy}%
-                          </span>
-                        </td>
-                        <td className="p-5 text-center">
-                          <button
-                            onClick={() => deleteResult(res.id)}
-                            className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                            title="O'chirish"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
+                      <td className="p-5 text-center">
+  <div className="flex items-center justify-center gap-2">
+    <button
+      onClick={() => updateUserRole(u.uid, u.role)}
+      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border ${
+        u.role === 'admin'
+          ? 'text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10'
+          : 'text-zinc-400 border-zinc-700 hover:bg-zinc-800'
+      }`}
+      title="Rolni o'zgartirish"
+    >
+      {u.role === 'admin' ? '→ User' : '→ Admin'}
+    </button>
+    <button
+      onClick={() => deleteUser(u.uid)}
+      className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+      title="O'chirish"
+    >
+      <Trash2 className="w-4 h-4" />
+    </button>
+  </div>
+</td>
                       </motion.tr>
                     ))}
                   </tbody>
