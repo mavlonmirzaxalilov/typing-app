@@ -35,16 +35,13 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const fetchResults = async (textId: string) => {
+  const fetchResults = async () => {
     if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.results) return;
     try {
       const response = await databases.listDocuments(
         APPWRITE_CONFIG.databaseId,
         APPWRITE_CONFIG.collections.results,
-        [
-          Query.equal('textId', [textId]),
-          Query.orderDesc('wpm')
-        ]
+        [Query.orderDesc('wpm')]
       );
       setResults(response.documents.map(doc => ({ id: doc.$id, ...doc } as unknown as TypingResult)));
     } catch (error) {
@@ -87,26 +84,15 @@ const AdminDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const activeText = texts.find(t => t.isActive);
-    if (!activeText) {
-      setResults([]);
-      return;
-    }
-
-    fetchResults(activeText.id);
+    fetchResults();
 
     const unsubscribe = client.subscribe(
       `databases.${APPWRITE_CONFIG.databaseId}.collections.${APPWRITE_CONFIG.collections.results}.documents`,
-      (response) => {
-        const payload = response.payload as any;
-        if (payload.textId === activeText.id) {
-          fetchResults(activeText.id);
-        }
-      }
+      () => fetchResults()
     );
 
     return () => unsubscribe();
-  }, [texts]);
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'users') {
@@ -195,11 +181,7 @@ const AdminDashboard: React.FC = () => {
     if (!confirm('Ushbu matnni o\'chirmoqchimisiz?')) return;
     if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.texts) return;
     try {
-      await databases.deleteDocument(
-        APPWRITE_CONFIG.databaseId,
-        APPWRITE_CONFIG.collections.texts,
-        id
-      );
+      await databases.deleteDocument(APPWRITE_CONFIG.databaseId, APPWRITE_CONFIG.collections.texts, id);
       fetchTexts();
     } catch (error) {
       console.error('Error deleting text:', error);
@@ -210,13 +192,8 @@ const AdminDashboard: React.FC = () => {
     if (!confirm('Ushbu natijani o\'chirmoqchimisiz?')) return;
     if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.results) return;
     try {
-      await databases.deleteDocument(
-        APPWRITE_CONFIG.databaseId,
-        APPWRITE_CONFIG.collections.results,
-        id
-      );
-      const activeText = texts.find(t => t.isActive);
-      if (activeText) fetchResults(activeText.id);
+      await databases.deleteDocument(APPWRITE_CONFIG.databaseId, APPWRITE_CONFIG.collections.results, id);
+      fetchResults();
     } catch (error) {
       console.error('Error deleting result:', error);
     }
@@ -226,32 +203,29 @@ const AdminDashboard: React.FC = () => {
     if (!confirm('Ushbu foydalanuvchini o\'chirmoqchimisiz?')) return;
     if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.users) return;
     try {
-      await databases.deleteDocument(
-        APPWRITE_CONFIG.databaseId,
-        APPWRITE_CONFIG.collections.users,
-        uid
-      );
+      await databases.deleteDocument(APPWRITE_CONFIG.databaseId, APPWRITE_CONFIG.collections.users, uid);
       fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
     }
   };
+
   const updateUserRole = async (uid: string, currentRole: string) => {
-  if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.users) return;
-  const newRole = currentRole === 'admin' ? 'user' : 'admin';
-  if (!confirm(`Rolni "${newRole}" ga o'zgartirmoqchimisiz?`)) return;
-  try {
-    await databases.updateDocument(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.collections.users,
-      uid,
-      { role: newRole }
-    );
-    fetchUsers();
-  } catch (error) {
-    console.error('Error updating role:', error);
-  }
-};
+    if (!APPWRITE_CONFIG.databaseId || !APPWRITE_CONFIG.collections.users) return;
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    if (!confirm(`Rolni "${newRole}" ga o'zgartirmoqchimisiz?`)) return;
+    try {
+      await databases.updateDocument(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.collections.users,
+        uid,
+        { role: newRole }
+      );
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating role:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0A0A0B]">
@@ -277,7 +251,7 @@ const AdminDashboard: React.FC = () => {
               onClick={() => setActiveTab('results')}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${activeTab === 'results' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/20' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
-              <Activity className="w-4 h-4" /> Jonli Natijalar
+              <Activity className="w-4 h-4" /> Natijalar
             </button>
             <button
               id="tab-users"
@@ -375,14 +349,12 @@ const AdminDashboard: React.FC = () => {
                   <Trophy className="w-6 h-6 text-cyan-500" /> 
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight">Leaderboard</h2>
-                  <p className="text-xs text-zinc-500 font-mono tracking-widest uppercase mt-0.5">Real-time Competition Rankings</p>
+                  <h2 className="text-xl font-bold text-white tracking-tight">Barcha Natijalar</h2>
+                  <p className="text-xs text-zinc-500 font-mono tracking-widest uppercase mt-0.5">Barcha vaqtdagi natijalar</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="px-4 py-2 bg-zinc-900 rounded-xl border border-zinc-800 text-xs text-zinc-400 font-medium">
-                  <span className="text-cyan-500 font-bold">{results.length}</span> Participants
-                </div>
+              <div className="px-4 py-2 bg-zinc-900 rounded-xl border border-zinc-800 text-xs text-zinc-400 font-medium">
+                <span className="text-cyan-500 font-bold">{results.length}</span> ta natija
               </div>
             </div>
             
@@ -393,10 +365,10 @@ const AdminDashboard: React.FC = () => {
                     <tr className="bg-zinc-950/40">
                       <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Rank</th>
                       <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Student</th>
-                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Branch</th>
-                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-center">Category</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">Filial</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-center">Toifa</th>
                       <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-right">WPM</th>
-                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-right">Accuracy</th>
+                      <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-right">Aniqlik</th>
                       <th className="p-5 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] text-center">Amal</th>
                     </tr>
                   </thead>
@@ -425,28 +397,23 @@ const AdminDashboard: React.FC = () => {
                             {res.ageCategory}
                           </span>
                         </td>
-                      <td className="p-5 text-center">
-  <div className="flex items-center justify-center gap-2">
-    <button
-      onClick={() => updateUserRole(u.uid, u.role)}
-      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border ${
-        u.role === 'admin'
-          ? 'text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10'
-          : 'text-zinc-400 border-zinc-700 hover:bg-zinc-800'
-      }`}
-      title="Rolni o'zgartirish"
-    >
-      {u.role === 'admin' ? '→ User' : '→ Admin'}
-    </button>
-    <button
-      onClick={() => deleteUser(u.uid)}
-      className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-      title="O'chirish"
-    >
-      <Trash2 className="w-4 h-4" />
-    </button>
-  </div>
-</td>
+                        <td className="p-5 text-right">
+                          <span className="text-2xl font-mono font-bold text-white tracking-tighter">{res.wpm}</span>
+                        </td>
+                        <td className="p-5 text-right">
+                          <span className={`text-sm font-mono font-bold ${res.accuracy > 95 ? 'text-green-500' : 'text-zinc-400'}`}>
+                            {res.accuracy}%
+                          </span>
+                        </td>
+                        <td className="p-5 text-center">
+                          <button
+                            onClick={() => deleteResult(res.id)}
+                            className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                            title="O'chirish"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
                       </motion.tr>
                     ))}
                   </tbody>
@@ -458,7 +425,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="space-y-1">
                     <p className="text-zinc-300 font-bold text-lg">Hozircha natijalar yo'q</p>
-                    <p className="text-zinc-600 text-sm max-w-xs mx-auto">Active musobaqa matni mavjudligini va talabalar yozishni boshlaganini tekshiring.</p>
+                    <p className="text-zinc-600 text-sm max-w-xs mx-auto">Talabalar yozishni boshlaganidan keyin natijalar bu yerda ko'rinadi.</p>
                   </div>
                 </div>
               )}
@@ -530,13 +497,26 @@ const AdminDashboard: React.FC = () => {
                           </span>
                         </td>
                         <td className="p-5 text-center">
-                          <button
-                            onClick={() => deleteUser(u.uid)}
-                            className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                            title="O'chirish"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => updateUserRole(u.uid, u.role)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border ${
+                                u.role === 'admin'
+                                  ? 'text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10'
+                                  : 'text-zinc-400 border-zinc-700 hover:bg-zinc-800'
+                              }`}
+                              title="Rolni o'zgartirish"
+                            >
+                              {u.role === 'admin' ? '→ User' : '→ Admin'}
+                            </button>
+                            <button
+                              onClick={() => deleteUser(u.uid)}
+                              className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </motion.tr>
                     ))}
